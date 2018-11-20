@@ -2,21 +2,16 @@ from Hand import Hand
 
 class Player:
 
-    self.pid = 0
-    self.chips = 0
-    self.hand = None
-    self.bet = 0
-    self.is_original = True
-
     def __init__(self, bankroll, pid):
-        self.chips = bankroll)
+        self.chips = bankroll
         self.pid = pid
         self.hand = Hand()
+        self.bet = 0
+        self.original = True
 
     def make_bet(self, true_count, min_bet, bet_spread):
-
         # round true count to nearest whole number
-        rounded_count = round(true_count)
+        rounded_count = int(round(true_count))
         if rounded_count < 2:
             self.bet = min_bet
 
@@ -27,10 +22,12 @@ class Player:
             try:
                 best_bet = bet_spread[bet_spread_index] * min_bet
             except IndexError:
-                best_bet = bet_spread[-1]
+                best_bet = bet_spread[-1] * min_bet
 
             self.bet = best_bet
 
+    def is_original(self):
+        return self.original
 
     def lost_chips(self, chips_lost):
         self.chips -= chips_lost

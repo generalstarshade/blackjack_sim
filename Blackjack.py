@@ -1,26 +1,18 @@
 import json
-import random
 import os
-from BasicStrategy import BasicStrategy
+from Strategy import Strategy
 from Player import Player
 from Hand import Hand
 
 class Blackjack:
 
-    self.decks = 6
-    self.h17 = False
-    self.num_players = 1
-    self.pen = 52
-    self.player_chips = 10000
-    self.min_bet = 25
-    self.bet_spread = [1, 2, 3, 4, 5]
-
-    self.shoe = []
-    self.players = []
-    self.running_count = 0
-    self.true_count = 0
-
     def __init__(self, config_file):
+
+        self.shoe = []
+        self.players = []
+        self.running_count = 0
+        self.true_count = 0
+        self.end_shoe = False
 
         self.load_config(config_file)
         self.shuffle_cards()
@@ -40,7 +32,7 @@ class Blackjack:
         self.bet_spread = config["bet_spread"]
 
         # create the players
-        for i in range(num_players):
+        for i in range(self.num_players):
             player = Player(self.player_chips, i)
             self.players.append(player)
 
@@ -58,8 +50,8 @@ class Blackjack:
         shuffled_shoe = []
         num_cards_left_to_shuffle = len(cards)
 
-        while num_cards_left_to_shuffle > 0:
-            rand_index = int(os.urandom(1)) % (num_cards_left_to_shuffle - 1)
+        while num_cards_left_to_shuffle > 1:
+            rand_index = ord(os.urandom(1)) % (num_cards_left_to_shuffle - 1)
             rand_card = cards[rand_index]
             shuffled_shoe.append(rand_card)
             del cards[rand_index]
@@ -69,6 +61,10 @@ class Blackjack:
         shuffled_shoe.insert(-self.pen, "cut")
 
         self.shoe = shuffled_shoe
+
+        # reset count
+        self.running_count = 0
+        self.true_count = 0
 
         # burn a card
         self.deal_one_card()
@@ -95,42 +91,53 @@ class Blackjack:
                     player.lost_chips(player.get_bet())
                 pass
 
+            """
+            print dealers_hand
+            print players_hand
+            """
+
             player.clear_hand()
 
         # resolve split players by consolidating the bankroll and removing the split players
         player_split_winnings = {}
-        for i in range(len(self.players)):
+        num_players = len(self.players)
+        i = 0
+        while i < num_players:
             player = self.players[i]
 
             # if we come across a split hand, take the winnings/losses of that hand and sum it
             # across all split hands belonging to a player. then we will add the final result
             # to the real player's bankroll
             if not player.is_original():
-                if player_split_winnings[player.pid]:
+                if player.pid in player_split_winnings:
                     player_split_winnings[player.pid] += player.chips
                 else:
                     player_split_winnings[player.pid] = player.chips
 
-            # delete the split hand now that we recorded how much was won/lost
-            del self.players[i]
-            i -= 1
+                # delete the split hand now that we recorded how much was won/lost
+                del self.players[i]
+                i -= 1
+                num_players -= 1
+
+            i += 1
 
         # add the winnings (or losses) to the split-player's bankroll
         for pid in player_split_winnings:
+            #print "Player %d won %d chips from splitting" % (pid, player_split_winnings[pid])
             self.players[pid].won_chips(player_split_winnings[pid])
 
 
     def update_count(self, card):
 
         count = 0
-        if card <= 6 and > 1:
+        if card <= 6 and card > 1:
             count = 1
-        elif card >= 10 or == 1:
+        elif card >= 10 or card == 1:
             count = -1
 
         # update true count and running count
         self.running_count += count
-        self.true_count = self.running_count / (len(self.shoe) / 52)
+        self.true_count = self.running_count / (len(self.shoe) / 52.0)
 
 
     def deal_one_card(self):
@@ -184,7 +191,7 @@ class Blackjack:
         dealer_upcard = dealers_hand.get_upcard()
         if dealer_upcard == 10:
             if dealers_hand.is_blackjack():
-                self.resolve_bets()
+                self.resolve_bets(dealers_hand)
                 return
 
         elif dealer_upcard == 1:
@@ -193,16 +200,17 @@ class Blackjack:
                 if took_insurance:
                     self.pay_insurance()
                 else:
-                    self.resolve_bets()
+                    self.resolve_bets(dealers_hand)
                 return
 
         # now play the hand
         self.play(dealers_hand)
 
 
-    def play(dealers_hand):
+    def play(self, dealers_hand):
 
         player_index = 0
+        strategy = Strategy()
 
         while True:
             if player_index >= len(self.players):
@@ -212,9 +220,19 @@ class Blackjack:
             players_hand = player.get_hand()
 
             while True:
-                player_decision = Strategy.optimal_play(dealers_hand, players_hand, self.true_count)
+                # check if player busted or blackjack
+                if players_hand.get_value() == -1:
+                    break
+                if players_hand.is_blackjack():
+                    break
+
+                player_decision = strategy.optimal_play(dealers_hand, players_hand, self.true_count)
 
                 if player_decision == "hit":
+                    # if player split aces, you cannot take a hit on them
+                    if players_hand.get_upcard == 1 and players_hand.is_split():
+                        break
+
                     player.add_card(self.deal_one_card())
                     continue
 
@@ -229,7 +247,8 @@ class Blackjack:
                 if player_decision == "split":
                     # add new temporary "player" to play the split hand
                     split_player = Player(0, player.pid)
-                    split_player.is_original = False
+                    split_player.original = False
+                    split_player.bet = player.bet
 
                     if players_hand.num_splits == 0:
                         players_hand.num_splits = 2
@@ -238,6 +257,7 @@ class Blackjack:
 
                     players_split_card = players_hand.get_upcard()
                     split_player.add_card(players_split_card)
+                    split_player.get_hand().num_splits = players_hand.num_splits
                     self.players.insert(player_index + 1, split_player)
                     player.clear_hand()
                     player.add_card(players_split_card)
@@ -250,19 +270,22 @@ class Blackjack:
                         continue
 
                 if player_decision == "surrender":
-                    players_hand = True
+                    players_hand.surrendered = True
                     players_hand.set_value(-1)
                     break
 
             player_index += 1
 
         # all hands have been played out, now play the dealers hand
-        while (self.h17 and dealers_hand.get_value() < 17 or dealers_hand.is_soft() and dealers_hand.get_value() < 17) or \
-              (not self.h17 and dealers_hand.get_value() < 17):
-                  dealers_hand.add_card(self.deal_one_card())
+        if self.h17:
+            while (dealers_hand.get_value() < 17 and dealers_hand.get_value() > 0 or dealers_hand.get_value() == 17 and dealers_hand.is_soft()):
+                dealers_hand.add_card(self.deal_one_card())
+        else:
+            while (dealers_hand.get_value() < 17 and dealers_hand.get_value() > 0):
+                dealers_hand.add_card(self.deal_one_card())
 
         # resolve the bets
-        self.resolve_bets()
+        self.resolve_bets(dealers_hand)
 
 
 

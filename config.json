@@ -1,0 +1,9 @@
+{
+    "decks" : 6,
+    "h17" : true,
+    "num_players" : 1,
+    "pen" : 52,
+    "player_chips" : 10000,
+    "min_bet" : 25,
+    "bet_spread" : [1, 2, 3, 4, 5]
+}
