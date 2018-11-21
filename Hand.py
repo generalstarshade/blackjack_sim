@@ -5,7 +5,7 @@ class Hand:
         self.soft = False
         self.value = 0
         self.num_splits = 0
-        self.split = False
+        self.can_split = False
         self.surrendered = False
 
     def add_card(self, card):
@@ -23,8 +23,12 @@ class Hand:
         if self.value > 21:
             self.value = -1
 
+        # blackjack should be considered higher than everything
+        if self.is_blackjack():
+            self.value = 22
+
         if len(self.cards) == 2 and self.cards[0] == self.cards[1]:
-            self.split = True
+            self.can_split = True
             if self.cards[0] == 1:
                 # for the purposes of this program, never consider pair of aces on
                 # the first two cards to be soft
@@ -35,18 +39,13 @@ class Hand:
         self.cards = []
         self.value = 0
         self.num_splits = 0
-        self.split = False
+        self.can_split = False
         self.surrendered = False
         self.soft = False
 
     def __str__(self):
-        print "cards: " + str(self.cards)
-        print "soft: " + str(self.soft)
-        print "value: " + str(self.value)
-        print "num_splits: " + str(self.num_splits)
-        print "split: " + str(self.split)
-        print "surrendered: " + str(self.surrendered)
-        return ""
+        s = "cards: %s\nvalue: %d" % (str(self.cards), self.value)
+        return s
 
     def get_cards(self):
         return self.cards
@@ -66,8 +65,8 @@ class Hand:
     def is_soft(self):
         return self.soft
 
-    def is_split(self):
-        return self.split
+    def is_splittable(self):
+        return self.can_split
 
     def is_surrendered(self):
         return self.surrendered
@@ -87,23 +86,3 @@ class Hand:
     def __ge__(self, other):
         return self.value >= other.value
 
-
-def hand_value(cards):
-
-    # blackjack is the highest hand possible, higher than non-natural 21, so we make it 22
-    if is_blackjack(cards):
-        current_value = 22
-        return current_value
-
-    current_value = 0
-    for card in cards:
-        tentative_value = current_value + card
-        if tentative_value > 21 and card == 11:
-            tentative_value = current_value + 1
-        elif tentative_value > 21:
-            # player busts
-            current_value = -1
-            return current_value
-        current_value = tentative_value
-
-    return current_value

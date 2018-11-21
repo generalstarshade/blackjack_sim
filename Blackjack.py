@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from Strategy import Strategy
 from Player import Player
 from Hand import Hand
@@ -43,8 +44,14 @@ class Blackjack:
         cards = [1]*4 + [2]*4 + [3]*4 + [4]*4 + [5]*4 + [6]*4 + [7]*4 + \
                 [8]*4 + [9]*4 + [10]*16
 
+
+        cards = cards * self.decks
+        random.shuffle(cards)
+        shuffled_shoe = cards
+
         # shuffle the cards using os.urandom (random.shuffle is not robust enough to handle
         # long sequences, like that involving decks of cards)
+        """
         cards = cards * self.decks
 
         shuffled_shoe = []
@@ -57,6 +64,7 @@ class Blackjack:
             del cards[rand_index]
             num_cards_left_to_shuffle -= 1
 
+        """
         # insert the cut card
         shuffled_shoe.insert(-self.pen, "cut")
 
@@ -92,7 +100,10 @@ class Blackjack:
                 pass
 
             """
+            print "dealer's"
             print dealers_hand
+
+            print "player's"
             print players_hand
             """
 
@@ -220,11 +231,13 @@ class Blackjack:
             players_hand = player.get_hand()
 
             while True:
-                # check if player busted or blackjack
+                # check if player busted or blackjack or newly split hand
                 if players_hand.get_value() == -1:
                     break
                 if players_hand.is_blackjack():
                     break
+                if players_hand.num_splits > 0 and len(players_hand.get_cards()) == 1:
+                    player.add_card(self.deal_one_card())
 
                 player_decision = strategy.optimal_play(dealers_hand, players_hand, self.true_count)
 

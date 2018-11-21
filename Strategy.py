@@ -73,7 +73,7 @@ class Strategy:
             if players_hand.is_soft():
                 player_offset_idx = -13
                 best_move = self.soft_hand_table[players_value + player_offset_idx][dealers_upcard + dealer_offset_idx]
-            elif players_hand.is_split():
+            elif players_hand.is_splittable():
                 player_offset_idx = -2
                 best_move = self.split_hand_table[players_upcard + player_offset_idx][dealers_upcard + dealer_offset_idx]
             else:
