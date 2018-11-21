@@ -31,6 +31,9 @@ class Player:
 
     def lost_chips(self, chips_lost):
         self.chips -= chips_lost
+        if self.chips < 0 and self.original:
+            print "Player %d is bankrupt. Stopping..." % self.pid
+            exit(0)
 
     def won_chips(self, chips_won):
         self.chips += chips_won

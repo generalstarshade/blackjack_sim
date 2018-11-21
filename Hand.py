@@ -44,7 +44,8 @@ class Hand:
         self.soft = False
 
     def __str__(self):
-        s = "cards: %s\nvalue: %d" % (str(self.cards), self.value)
+        s = "cards: %s\nvalue: %d\n" % (str(self.cards), self.value)
+        s += "num_splits: %d" % self.num_splits
         return s
 
     def get_cards(self):

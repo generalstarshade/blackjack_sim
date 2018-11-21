@@ -17,6 +17,9 @@ class Blackjack:
 
         self.load_config(config_file)
         self.shuffle_cards()
+        self.hands_won = 0
+        self.hands_tied = 0
+        self.hands_lost = 0
 
 
     def load_config(self, config_file):
@@ -45,14 +48,10 @@ class Blackjack:
                 [8]*4 + [9]*4 + [10]*16
 
 
-        cards = cards * self.decks
-        random.shuffle(cards)
-        shuffled_shoe = cards
-
         # shuffle the cards using os.urandom (random.shuffle is not robust enough to handle
         # long sequences, like that involving decks of cards)
-        """
         cards = cards * self.decks
+        random.shuffle(cards)
 
         shuffled_shoe = []
         num_cards_left_to_shuffle = len(cards)
@@ -64,9 +63,8 @@ class Blackjack:
             del cards[rand_index]
             num_cards_left_to_shuffle -= 1
 
-        """
         # insert the cut card
-        shuffled_shoe.insert(-self.pen, "cut")
+        shuffled_shoe.insert(self.pen, "cut")
 
         self.shoe = shuffled_shoe
 
@@ -87,16 +85,20 @@ class Blackjack:
                     player.lost_chips(player.get_bet() / 2.0)
                 else:
                     player.lost_chips(player.get_bet())
+                self.hands_lost += 1
             elif player.get_hand() > dealers_hand:
                 # player won, give player chips (and 1.5 his bet if blackjack)
                 if player.get_hand().is_blackjack():
                     player.won_chips(player.get_bet() * 1.5)
                 else:
                     player.won_chips(player.get_bet())
+                self.hands_won += 1
             elif dealers_hand == player.get_hand():
                 # if there was a tie because dealer and player busted, dealer wins
                 if dealers_hand.value == -1:
                     player.lost_chips(player.get_bet())
+                else:
+                    self.hands_tied += 1
                 pass
 
             """
@@ -106,7 +108,6 @@ class Blackjack:
             print "player's"
             print players_hand
             """
-
             player.clear_hand()
 
         # resolve split players by consolidating the bankroll and removing the split players
@@ -152,11 +153,11 @@ class Blackjack:
 
 
     def deal_one_card(self):
-        card = self.shoe.pop(0)
+        card = self.shoe.pop()
         self.update_count(card)
         if card == "cut":
             self.end_shoe = True
-            card = self.shoe.pop(0)
+            card = self.shoe.pop()
             self.update_count(card)
         return card
 
@@ -179,6 +180,7 @@ class Blackjack:
             if player.get_hand().is_blackjack():
                 # if player had blackjack, insurance is even money
                 player.won_chips(player.bet * 1.5)
+                self.hands_tied += 1
             else:
                 player.won_chips(player.bet / 2.0)
 
@@ -223,71 +225,85 @@ class Blackjack:
         player_index = 0
         strategy = Strategy()
 
-        while True:
-            if player_index >= len(self.players):
-                break
-
-            player = self.players[player_index]
-            players_hand = player.get_hand()
-
+        try:
             while True:
-                # check if player busted or blackjack or newly split hand
-                if players_hand.get_value() == -1:
+                if player_index >= len(self.players):
                     break
-                if players_hand.is_blackjack():
-                    break
-                if players_hand.num_splits > 0 and len(players_hand.get_cards()) == 1:
-                    player.add_card(self.deal_one_card())
 
-                player_decision = strategy.optimal_play(dealers_hand, players_hand, self.true_count)
+                player = self.players[player_index]
+                players_hand = player.get_hand()
 
-                if player_decision == "hit":
-                    # if player split aces, you cannot take a hit on them
-                    if players_hand.get_upcard == 1 and players_hand.is_split():
+                while True:
+                    # check if player busted or blackjack or newly split hand
+                    if players_hand.get_value() == -1:
                         break
-
-                    player.add_card(self.deal_one_card())
-                    continue
-
-                if player_decision == "stand":
-                    break
-
-                if player_decision == "double":
-                    player.set_bet(player.get_bet() * 2)
-                    player.add_card(self.deal_one_card())
-                    break
-
-                if player_decision == "split":
-                    # add new temporary "player" to play the split hand
-                    split_player = Player(0, player.pid)
-                    split_player.original = False
-                    split_player.bet = player.bet
-
-                    if players_hand.num_splits == 0:
-                        players_hand.num_splits = 2
-                    else:
-                        players_hand.num_splits += 1
-
-                    players_split_card = players_hand.get_upcard()
-                    split_player.add_card(players_split_card)
-                    split_player.get_hand().num_splits = players_hand.num_splits
-                    self.players.insert(player_index + 1, split_player)
-                    player.clear_hand()
-                    player.add_card(players_split_card)
-                    player.add_card(self.deal_one_card())
-
-                    # if we split aces, we do not get to hit multiple times
-                    if player.get_hand().get_upcard() == 1:
+                    if players_hand.is_blackjack():
                         break
-                    else:
+                    if players_hand.num_splits > 0 and len(players_hand.get_cards()) == 1:
+                        player.add_card(self.deal_one_card())
+
+                    player_decision = strategy.optimal_play(dealers_hand, players_hand, self.true_count)
+
+                    if player_decision == "hit":
+                        # if player split aces, you cannot take a hit on them
+                        if players_hand.get_upcard == 1 and players_hand.is_splittable():
+                            break
+
+                        player.add_card(self.deal_one_card())
                         continue
 
-                if player_decision == "surrender":
-                    players_hand.surrendered = True
-                    players_hand.set_value(-1)
-                    break
+                    if player_decision == "stand":
+                        break
 
-            player_index += 1
+                    if player_decision == "double":
+                        player.set_bet(player.get_bet() * 2)
+                        player.add_card(self.deal_one_card())
+                        break
+
+                    if player_decision == "split":
+                        # add new temporary "player" to play the split hand
+                        split_player = Player(0, player.pid)
+                        split_player.original = False
+                        split_player.bet = player.bet
+
+                        if players_hand.num_splits == 0:
+                            players_hand.num_splits = 2
+                        else:
+                            players_hand.num_splits += 1
+
+                        players_split_card = players_hand.get_upcard()
+                        split_player.add_card(players_split_card)
+                        split_player.get_hand().num_splits = players_hand.num_splits
+                        self.players.insert(player_index + 1, split_player)
+                        player.clear_hand()
+                        player.add_card(players_split_card)
+                        player.add_card(self.deal_one_card())
+
+                        # if we split aces, we do not get to hit multiple times
+                        if player.get_hand().get_upcard() == 1:
+                            break
+                        else:
+                            continue
+
+                    if player_decision == "surrender":
+                        players_hand.surrendered = True
+                        players_hand.set_value(-1)
+                        break
+
+                player_index += 1
+
+        except KeyboardInterrupt:
+            print "Stuck in infinite loop, printing hands..."
+            print "Players hand"
+            print players_hand
+            print "dealers hand"
+            print dealers_hand
+            print "player decision"
+            print player_decision
+            print "printing all player's hands"
+            for player in self.players:
+                print player.hand
+            exit(0)
 
         # all hands have been played out, now play the dealers hand
         if self.h17:

@@ -93,8 +93,16 @@ class Strategy:
                 best_move = best_move.split("/")[0]
 
         # if it's a split, check that we can actually split (can't split more than 4 hands). If not, go to hard hand table
-        elif best_move == "split" and players_hand.num_splits == 4:
+        elif best_move == "split" and players_hand.num_splits >= 4:
+            player_offset_idx = -4
             best_move = self.hard_hand_table[players_value + player_offset_idx][dealers_upcard + dealer_offset_idx]
+
+            if "/" in best_move:
+                if len(players_hand.get_cards()) > 2:
+                    best_move = best_move.split("/")[1]
+                else:
+                    best_move = best_move.split("/")[0]
+
 
         return best_move
 
