@@ -13,7 +13,6 @@ class Blackjack:
         self.players = []
         self.running_count = 0
         self.true_count = 0
-        self.end_shoe = False
 
         self.load_config(config_file)
         self.shuffle_cards()
@@ -63,9 +62,6 @@ class Blackjack:
             del cards[rand_index]
             num_cards_left_to_shuffle -= 1
 
-        # insert the cut card
-        shuffled_shoe.insert(self.pen, "cut")
-
         self.shoe = shuffled_shoe
 
         # reset count
@@ -97,6 +93,7 @@ class Blackjack:
                 # if there was a tie because dealer and player busted, dealer wins
                 if dealers_hand.value == -1:
                     player.lost_chips(player.get_bet())
+                    self.hands_lost += 1
                 else:
                     self.hands_tied += 1
                 pass
@@ -155,10 +152,6 @@ class Blackjack:
     def deal_one_card(self):
         card = self.shoe.pop()
         self.update_count(card)
-        if card == "cut":
-            self.end_shoe = True
-            card = self.shoe.pop()
-            self.update_count(card)
         return card
 
 
@@ -183,6 +176,7 @@ class Blackjack:
                 self.hands_tied += 1
             else:
                 player.won_chips(player.bet / 2.0)
+                self.hands_lost += 1
 
 
     def deal(self):
@@ -234,6 +228,7 @@ class Blackjack:
                 players_hand = player.get_hand()
 
                 while True:
+                    
                     # check if player busted or blackjack or newly split hand
                     if players_hand.get_value() == -1:
                         break
@@ -241,6 +236,7 @@ class Blackjack:
                         break
                     if players_hand.num_splits > 0 and len(players_hand.get_cards()) == 1:
                         player.add_card(self.deal_one_card())
+
 
                     player_decision = strategy.optimal_play(dealers_hand, players_hand, self.true_count)
 
@@ -252,28 +248,28 @@ class Blackjack:
                         player.add_card(self.deal_one_card())
                         continue
 
-                    if player_decision == "stand":
+                    elif player_decision == "stand":
                         break
 
-                    if player_decision == "double":
+                    elif player_decision == "double":
                         player.set_bet(player.get_bet() * 2)
                         player.add_card(self.deal_one_card())
                         break
 
-                    if player_decision == "split":
+                    elif player_decision == "split":
                         # add new temporary "player" to play the split hand
                         split_player = Player(0, player.pid)
                         split_player.original = False
                         split_player.bet = player.bet
 
                         if players_hand.num_splits == 0:
-                            players_hand.num_splits = 2
+                            players_hand.set_splits(2)
                         else:
-                            players_hand.num_splits += 1
+                            players_hand.incr_splits()
 
                         players_split_card = players_hand.get_upcard()
                         split_player.add_card(players_split_card)
-                        split_player.get_hand().num_splits = players_hand.num_splits
+                        split_player.get_hand().set_splits(players_hand.num_splits)
                         self.players.insert(player_index + 1, split_player)
                         player.clear_hand()
                         player.add_card(players_split_card)
@@ -285,11 +281,16 @@ class Blackjack:
                         else:
                             continue
 
-                    if player_decision == "surrender":
+                    elif player_decision == "surrender":
                         players_hand.surrendered = True
                         players_hand.set_value(-1)
                         break
 
+                    else:
+                        print "Invalid player option: %s" % player_decision
+                        exit(1)
+
+                    
                 player_index += 1
 
         except KeyboardInterrupt:

@@ -22,9 +22,8 @@ def start_sim(num_hands_to_play, config_file):
 
     for hands_played in range(num_hands_to_play):
         game.deal()
-        if game.end_shoe:
+        if len(game.shoe) < game.pen:
             game.shuffle_cards()
-            game.end_shoe = False
 
         if (hands_played + 1) % 10000 == 0:
             print "%d hands played." % (hands_played + 1)
@@ -39,9 +38,12 @@ def gather_stats(game, num_hands_to_play):
         print "Player %d now has %d chips" % (i, player.chips)
         i += 1
 
-    hands_won = game.hands_won / float(num_hands_to_play)
-    hands_tied = game.hands_tied / float(num_hands_to_play)
-    hands_lost = game.hands_lost / float(num_hands_to_play)
+    actual_total_hands = game.hands_won + game.hands_tied + game.hands_lost
+    hands_won = game.hands_won / float(actual_total_hands)
+    hands_tied = game.hands_tied / float(actual_total_hands)
+    hands_lost = game.hands_lost / float(actual_total_hands)
+
+    print "total hands: %d" % (actual_total_hands)
 
     print "Hands won : %f" % hands_won
     print "Hands tied : %f" % hands_tied

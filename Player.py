@@ -61,3 +61,8 @@ class Player:
 
     def clear_hand(self):
         self.hand.clear()
+
+    def __str__(self):
+        s = "self.chips = " + str(self.chips) + "\nself.pid = " + str(self.pid) + "\nself.hand = " + str(self.hand) + "\nself.bet = " + str(self.bet) + "\nself.original = " + str(self.original)
+        return s
+

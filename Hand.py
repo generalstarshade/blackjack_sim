@@ -60,6 +60,12 @@ class Hand:
     def get_value(self):
         return self.value
 
+    def incr_splits(self):
+        self.num_splits += 1
+
+    def set_splits(self, num):
+        self.num_splits = num
+
     def is_blackjack(self):
         return 1 in self.cards and 10 in self.cards and len(self.cards) == 2 and self.num_splits == 0
 
@@ -87,3 +93,6 @@ class Hand:
     def __ge__(self, other):
         return self.value >= other.value
 
+    def __str__(self):
+        s = "self.cards = " + str(self.cards) + "\nself.soft = " + str(self.soft) + "\nself.value = " + str(self.value) + "\nself.num_splits = " + str(self.num_splits) + "\nself.can_split = " + str(self.can_split) + "\nself.surrendered = " + str(self.surrendered)
+        return s

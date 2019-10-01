@@ -56,6 +56,10 @@ class Strategy:
         players_value = players_hand.get_value()
         players_upcard = players_hand.get_upcard()
 
+        best_move = self.get_deviation(dealers_hand, players_hand, true_count)
+        if best_move:
+            return best_move
+
         # for the sake of this file, A will be represented as 11
         if dealers_upcard == 1:
             dealers_upcard = 11
@@ -107,3 +111,131 @@ class Strategy:
         return best_move
 
 
+    def get_deviation(self, dealers_hand, players_hand, tc):
+
+        players_value = players_hand.get_value()
+        players_cards = players_hand.get_cards()
+        dealers_value = dealers_hand.get_value()
+
+        if players_value == 16 and dealers_value == 10:
+            if tc < -1:
+                return "hit"
+            if tc > -1 and tc < 1:
+                if len(players_cards) > 2:
+                    return "hit"
+                else:
+                    return "surrender"
+            if tc >= 1:
+                if len(players_cards) > 2:
+                    return "stand"
+                else:
+                    return "surrender"
+
+        elif players_value == 15 and dealers_value == 10:
+            if tc < 0:
+                return "hit"
+            if tc < 5:
+                if len(players_cards) > 2:
+                    return "hit"
+                else:
+                    return "surrender"
+            if tc >= 5:
+                if len(players_cards) > 2:
+                    return "stand"
+                else:
+                    return "surrender"
+
+        elif players_cards[0] == 10 and players_cards[1] == 10 and len(players_cards) == 2 and dealers_value == 5:
+            if tc >= 6 and players_hand.num_splits < 4:
+                return "split"
+            else:
+                return "stand"
+
+        elif players_cards[0] == 10 and players_cards[1] == 10 and len(players_cards) == 2 and dealers_value == 6:
+            if tc >= 5 and players_hand.num_splits < 4:
+                return "split"
+            else:
+                return "stand"
+
+        elif players_value == 10 and len(players_cards) == 2 and dealers_value == 10:
+            if tc >= 5:
+                return "double"
+            else:
+                return "hit"
+
+        elif players_value == 12 and dealers_value == 3:
+            if tc > 2:
+                return "stand"
+            else:
+                return "hit"
+
+        elif players_value == 12 and dealers_value == 2:
+            if tc > 3:
+                return "stand"
+            else:
+                return "hit"
+
+        elif players_value == 9 and len(players_cards) == 2 and dealers_value == 2:
+            if tc > 2:
+                return "double"
+            else:
+                return "hit"
+
+        elif players_value == 10 and len(players_cards) == 2 and dealers_value == 1:
+            if tc >= 5:
+                return "double"
+            else:
+                return "hit"
+
+        elif players_value == 9 and len(players_cards) == 2 and dealers_value == 7:
+            if tc >= 3:
+                return "double"
+            else:
+                return "hit"
+
+        elif players_value == 16 and dealers_value == 9:
+            if tc < -1:
+                return "hit"
+            if tc < 6:
+                if len(players_cards) > 2:
+                    return "hit"
+                else:
+                    return "surrender"
+            if tc >= 6:
+                if len(players_cards) > 2:
+                    return "stand"
+                else:
+                    return "surrender"
+
+        elif players_value == 13 and dealers_value == 2:
+            if tc <= -2:
+                return "hit"
+            else:
+                return "stand"
+
+        elif players_value == 12 and dealers_value == 4:
+            if tc <= -1:
+                return "hit"
+            else:
+                return "stand"
+
+        elif players_value == 12 and dealers_value == 5:
+            if tc <= -3:
+                return "hit"
+            else:
+                return "stand"
+
+        elif players_value == 12 and dealers_value == 6:
+            if tc <= -2:
+                return "hit"
+            else:
+                return "stand"
+
+        elif players_value == 13 and dealers_value == 3:
+            if tc <= -3:
+                return "hit"
+            else:
+                return "stand"
+
+        else:
+            return None
